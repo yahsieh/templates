@@ -1,0 +1,42 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  IMAGE_NAME: "test-image"
+
+build:
+  stage: build
+  tags:
+    - docker
+  script:
+    - docker build . -t $IMAGE_NAME
+    - mkdir image
+    - docker save $IMAGE_NAME > image/${IMAGE_NAME}.tar
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - image
+
+test:
+  stage: test
+  tags:
+    - docker
+  script:
+    - (docker ps -a | awk '{print $NF}' | grep $IMAGE_NAME) && docker rm -f $IMAGE_NAME
+    - docker load -i image/${IMAGE_NAME}.tar
+    - docker run --rm --name $IMAGE_NAME -d $IMAGE_NAME
+    - docker cp -a nagios/. $IMAGE_NAME:/etc/nagios/
+    - docker exec $IMAGE_NAME /bin/nagios -vv /etc/nagios/nagios.cfg
+    - docker stop $IMAGE_NAME
+
+deploy:
+  stage: deploy
+  tags:
+    - net
+  only:
+    - master
+  script:
+    - cp nagios/*.cfg /etc/nagios/
+    - cp -r nagios/objects/. /etc/nagios/objects/

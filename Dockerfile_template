@@ -1,0 +1,19 @@
+FROM alpine:3.7
+
+ENV NAGIOS_HOME            /
+ENV NAGIOS_BRANCH          nagios-4.3.4
+ENV NAGIOS_CHECKRESULT_DIR        /var/spool/nagios/checkresults
+ENV NAGIOS_SYSCONF_DIR            /etc/nagios/
+
+ADD nagios/ /tmp/nagios
+
+RUN apk upgrade --update
+RUN apk --no-cache add busybox
+RUN addgroup -S nagios && adduser -S nagios -G nagios
+RUN apk --no-cache add --virtual .build-deps alpine-sdk                              && \
+    apk del .build-deps
+
+
+USER nagios
+
+CMD [ "/bin/nagios", "/etc/nagios/nagios.cfg" ]
